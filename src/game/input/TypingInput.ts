@@ -12,6 +12,7 @@ export interface TypingHandlers {
   onBackspace?: (t: number) => void;
   onEscape?: () => void;
   onTab?: (t: number) => void;
+  onRestart?: () => void;
 }
 
 export class TypingInput {
@@ -120,6 +121,12 @@ export class TypingInput {
     if (e.key === "Escape") {
       e.preventDefault();
       this.handlers.onEscape?.();
+      return;
+    }
+    // Rychlý restart klávesou F2 nebo Ctrl+R
+    if (e.key === "F2" || ((e.ctrlKey || e.metaKey) && (e.key === "r" || e.key === "R"))) {
+      e.preventDefault();
+      this.handlers.onRestart?.();
       return;
     }
     if (this.paused) return;

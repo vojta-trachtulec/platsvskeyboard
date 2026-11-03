@@ -187,6 +187,7 @@ export class LevelScene extends Phaser.Scene {
       onChar: (ch, t) => this.onChar(ch, t),
       onBackspace: () => this.onBackspace(),
       onEscape: () => this.togglePause(),
+      onRestart: () => this.restartLevel(),
     });
     this.createCrosshair();
 
@@ -1482,6 +1483,15 @@ export class LevelScene extends Phaser.Scene {
     bridge.emitTyped("exit");
   }
 
+  private calculateCurrentWpm(): number {
+    if (!this.started || this.finished) return 0;
+    const now = performance.now();
+    const windowMs = 5000; // plovoucí okno 5 sekund
+    const recentHits = this.keystrokes.filter(([t, ok]) => ok === 1 && now - t <= windowMs).length;
+    // 5 úhozů = 1 slovo, okno 5 sekund -> přepočet na minutu: (hits / 5) * (60 / 5) = hits * 2.4
+    return Math.round(recentHits * 2.4);
+  }
+
   private emitHud() {
     const boss = this.zombies.find((z) => z.kind === "boss" && !z.dead);
     const expectedChar = this.finished
@@ -1515,6 +1525,7 @@ export class LevelScene extends Phaser.Scene {
       boss: boss ? { hp: boss.hp, maxHp: boss.maxHp } : null,
       expectedChar,
       muted: soundManager.isMuted(),
+      currentWpm: this.calculateCurrentWpm(),
     };
     bridge.emitTyped("hud", state);
   }

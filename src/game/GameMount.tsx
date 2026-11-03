@@ -284,8 +284,27 @@ export default function GameMount({
             )}
           </div>
 
-          {/* Right: pauza, zvuk, skóre a zbývající zombíci */}
+          {/* Right: WPM tachometr, restart, pauza, zvuk, skóre */}
           <div className="flex items-start gap-2">
+            {/* Živý WPM ukazatel (rychlost psaní) */}
+            <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-b from-cyan-950/70 via-zinc-950/85 to-black/90 px-3 py-1.5 text-center backdrop-blur-md shadow-xl">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-400">Rychlost</div>
+              <div className="text-xl font-black tabular-nums tracking-tight text-cyan-200">
+                {hud?.currentWpm ?? 0}
+                <span className="ml-1 text-[10px] font-normal text-cyan-400/80">WPM</span>
+              </div>
+            </div>
+
+            {/* Tlačítko rychlého restartu */}
+            <button
+              type="button"
+              onClick={() => bridge.emitTyped("restart-level")}
+              aria-label="Restartovat kolo"
+              className="pointer-events-auto rounded-xl border border-white/10 bg-black/65 px-3 py-2 text-xl text-zinc-300 backdrop-blur-md transition-colors hover:bg-black/80 hover:text-white"
+              title="Restartovat kolo (F2)"
+            >
+              🔄
+            </button>
             <button
               type="button"
               onClick={() => bridge.emitTyped("pause-level")}
