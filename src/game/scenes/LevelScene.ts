@@ -101,6 +101,7 @@ export class LevelScene extends Phaser.Scene {
   private boostLocked = false;
   private killsSinceBoost = 0;
   private freezeUntil = 0;
+  private errorSpeedBoostUntil = 0; // dočasné zrychlení zombíků po chybě
 
   private hudTimer = 0;
   private spawnEvent?: Phaser.Time.TimerEvent;
@@ -760,7 +761,42 @@ export class LevelScene extends Phaser.Scene {
     soundManager.playTypo();
     this.registerKey(ch, false, t);
     this.combo = 0;
-    this.cameras.main.shake(80, 0.002);
+    this.cameras.main.shake(100, 0.004);
+    // Vizuální varovný záblesk při chybě (červený flash)
+    this.cameras.main.flash(180, 255, 60, 60, false);
+
+    // Zvýšení rychlosti zombíků jako trest za chybu (trvá 2.5s)
+    this.errorSpeedBoostUntil = Math.max(this.errorSpeedBoostUntil, this.time.now) + 2500;
+
+    // Pokud je aktivní zombík uzamčen nebo existují zombíci, posunout je mírně vpřed (skok o 12 px)
+    for (const z of this.zombies) {
+      if (!z.dead) {
+        z.container.x -= 12;
+      }
+    }
+
+    this.showPenaltyNotice();
+  }
+
+  private showPenaltyNotice() {
+    const notice = this.add.text(this.scale.width / 2, 75, "⚠️ CHYBA! ZRYCHLENÍ ZOMBÍKŮ! ⚠️", {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: "13px",
+      color: "#ff3838",
+      stroke: "#000000",
+      strokeThickness: 4,
+    });
+    notice.setOrigin(0.5);
+    notice.setDepth(300);
+
+    this.tweens.add({
+      targets: notice,
+      y: 55,
+      alpha: 0,
+      duration: 1200,
+      ease: "Quad.out",
+      onComplete: () => notice.destroy(),
+    });
   }
 
   private registerKey(key: string, ok: boolean, t: number) {
@@ -1232,9 +1268,12 @@ export class LevelScene extends Phaser.Scene {
     if (this.finished || !this.started || this.isPaused) return;
     const dt = delta / 1000;
     const isFrozen = this.time.now < this.freezeUntil;
+    const isPenaltySpeed = this.time.now < this.errorSpeedBoostUntil;
+    const penaltyMul = isPenaltySpeed ? 1.45 : 1; // +45% rychlost zombíků po chybě
+
     for (const z of this.zombies) {
       if (z.dead) continue;
-      let speedMul = isFrozen ? 0.35 : 1;
+      let speedMul = (isFrozen ? 0.35 : 1) * penaltyMul;
       if (z.stunUntil && this.time.now < z.stunUntil) {
         speedMul = 0;
       } else if (z.slowUntil && this.time.now < z.slowUntil) {
