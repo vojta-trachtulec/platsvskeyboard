@@ -579,14 +579,51 @@ export class LevelScene extends Phaser.Scene {
   private updateZombieHighlight(z: Zombie, isLocked: boolean) {
     if (!z || z.dead || !z.container || !z.container.active) return;
     if (isLocked) {
-      z.typedText.setStroke("#ffd32a", 6);
-      z.restText.setStroke("#ffd32a", 6);
-      z.container.setScale(1.06);
+      // Barva ohraničení podle combo streak (Cyber Glow)
+      const glowColor =
+        this.combo >= 15
+          ? "#ff4757" // Plamen / červená (Ultra)
+          : this.combo >= 10
+          ? "#2ed573" // Neon zelená (Super)
+          : this.combo >= 5
+          ? "#1e90ff" // Neon modrá (Good)
+          : "#ffd32a"; // Zlatá (Default lock)
+      z.typedText.setStroke(glowColor, 7);
+      z.restText.setStroke(glowColor, 7);
+      z.container.setScale(1.08);
     } else {
       z.typedText.setStroke("#000000", 5);
       z.restText.setStroke("#000000", 5);
       z.container.setScale(1.0);
     }
+  }
+
+  private showFloatingScore(x: number, y: number, score: number, combo: number) {
+    const isBigCombo = combo >= 5;
+    const textStr = isBigCombo ? `+${score}\nCOMBO x${combo}!` : `+${score}`;
+    const textColor =
+      combo >= 15 ? "#ff4757" : combo >= 10 ? "#2ed573" : combo >= 5 ? "#00f2fe" : "#ffd32a";
+
+    const label = this.add.text(x, y, textStr, {
+      fontFamily: '"Press Start 2P", monospace',
+      fontSize: isBigCombo ? "13px" : "11px",
+      color: textColor,
+      align: "center",
+      stroke: "#000000",
+      strokeThickness: 4,
+    });
+    label.setOrigin(0.5);
+    label.setDepth(250);
+
+    this.tweens.add({
+      targets: label,
+      y: y - 45,
+      alpha: 0,
+      scale: isBigCombo ? 1.25 : 1.1,
+      duration: 850,
+      ease: "Cubic.out",
+      onComplete: () => label.destroy(),
+    });
   }
 
   private createCrosshair() {
@@ -690,7 +727,12 @@ export class LevelScene extends Phaser.Scene {
     const base = 10 * z.word.length;
     this.combo++;
     this.maxCombo = Math.max(this.maxCombo, this.combo);
-    this.score += base + Math.min(this.combo, 10) * 5;
+    const addedScore = base + Math.min(this.combo, 10) * 5;
+    this.score += addedScore;
+
+    // Vizuální plovoucí skóre a combo text
+    this.showFloatingScore(z.container.x, z.container.y - 40, addedScore, this.combo);
+
     z.hp--;
     if (z.queue.length > 0) {
       // boss / obrněný: další slovo
