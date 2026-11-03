@@ -41,34 +41,55 @@ interface AuthValue {
 const Ctx = createContext<AuthValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserDoc | null>(null);
+  // Pro účely prezentace / hosta: automatický přístup bez nutnosti přihlašování
+  const [user, setUser] = useState<User | null>({
+    uid: "guest-presenter",
+    email: "prezentace@skola.cz",
+    displayName: "Prezentace (Host)",
+    emailVerified: true,
+  } as unknown as User);
+  const [profile, setProfile] = useState<UserDoc | null>({
+    email: "prezentace@skola.cz",
+    displayName: "Prezentace (Host)",
+    gradYear: 2027,
+    track: "C",
+    layout: "qwertz",
+    createdAt: new Date().toISOString() as unknown as import("firebase/firestore").Timestamp,
+    lastActiveAt: new Date().toISOString() as unknown as import("firebase/firestore").Timestamp,
+  });
   const [role, setRole] = useState<Role>("student");
-  const [access, setAccess] = useState<AccessState>("loading");
+  const [access, setAccess] = useState<AccessState>("ok");
 
   const evaluate = useCallback(async (u: User | null) => {
+    // Pokud je uživatel skutečně přihlášen přes Firebase, načíst jeho data, jinak nechat režim hosta
     if (!u) {
-      setUser(null);
-      setProfile(null);
+      setUser({
+        uid: "guest-presenter",
+        email: "prezentace@skola.cz",
+        displayName: "Prezentace (Host)",
+        emailVerified: true,
+      } as unknown as User);
+      setProfile({
+        email: "prezentace@skola.cz",
+        displayName: "Prezentace (Host)",
+        gradYear: 2027,
+        track: "C",
+        layout: "qwertz",
+        createdAt: new Date().toISOString() as unknown as import("firebase/firestore").Timestamp,
+        lastActiveAt: new Date().toISOString() as unknown as import("firebase/firestore").Timestamp,
+      });
       setRole("student");
-      setAccess("anonymous");
+      setAccess("ok");
       return;
     }
     setUser(u);
-    const provider = u.providerData[0]?.providerId;
-    const allowed = await getAllowedUser(u.email);
-    const school = isSchoolEmail(u.email);
-    if (!allowed && !school) {
-      setAccess("forbidden");
-      return;
+    try {
+      const allowed = await getAllowedUser(u.email);
+      setRole(allowed?.role ?? "student");
+      setProfile(await ensureUserDoc(u));
+    } catch {
+      // Při selhání Firebase sítě zachovat profil hosta
     }
-    // heslový účet musí mít ověřený e-mail (jinak by si kdokoli založil cizí @ghb.cz)
-    if (provider === "password" && !u.emailVerified && !allowed) {
-      setAccess("unverified");
-      return;
-    }
-    setRole(allowed?.role ?? "student");
-    setProfile(await ensureUserDoc(u));
     setAccess("ok");
   }, []);
 

@@ -11,7 +11,7 @@ const NAV = [
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { access, profile, role, signOut } = useAuth();
+  const { access, role } = useAuth();
   const path = usePathname();
   const isTeacher = role === "teacher" || role === "admin";
   const inGame = path.startsWith("/hra");
@@ -42,19 +42,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           )}
           <div className="flex items-center gap-3 text-sm">
-            {access === "ok" && profile && (
-              <>
-                <span className="hidden text-zinc-300 sm:inline">{profile.displayName}</span>
-                <button onClick={() => void signOut()} className="rounded-md border border-white/15 px-3 py-1.5 hover:bg-white/10">
-                  Odhlásit
-                </button>
-              </>
-            )}
-            {access === "anonymous" && (
-              <Link href="/prihlaseni" className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium hover:bg-emerald-500">
-                Přihlásit se
-              </Link>
-            )}
+            <span className="hidden text-zinc-300 sm:inline">Režim hosta</span>
+            <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs font-semibold text-emerald-400 border border-emerald-500/30">
+              Prezentace
+            </span>
           </div>
         </div>
       </header>

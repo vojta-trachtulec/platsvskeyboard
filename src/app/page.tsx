@@ -25,8 +25,6 @@ function nextRound(progress: ProgressDoc | null): { chapter: number; round: numb
 }
 
 export default function HomePage() {
-  const { access } = useAuth();
-  if (access === "anonymous") return <Landing />;
   return (
     <RequireAuth>
       <LevelMap />

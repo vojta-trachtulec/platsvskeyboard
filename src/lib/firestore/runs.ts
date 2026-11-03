@@ -7,8 +7,28 @@ import type { RunResult } from "@/game/types";
 import type { ProgressDoc, StatsDoc, UserDoc } from "./types";
 
 export async function getProgress(uid: string): Promise<ProgressDoc | null> {
-  const snap = await getDoc(doc(db, "progress", uid));
-  return snap.exists() ? (snap.data() as ProgressDoc) : null;
+  if (uid === "guest-presenter") {
+    // V prezentačním režimu hosta: odemčené všechny kapitoly a čistý profil
+    return {
+      levels: {},
+      completedRounds: 0,
+      courseCompletion: 0,
+      unlockedChapter: CHAPTERS.length, // všechny kapitoly odemčené k prezentaci
+      bestCpm: 0,
+      bestNetCpm: 0,
+      totalRuns: 0,
+      totalMinutes: 0,
+      totalScore: 0,
+      keyStats: {},
+      updatedAt: new Date().toISOString() as unknown as Timestamp,
+    };
+  }
+  try {
+    const snap = await getDoc(doc(db, "progress", uid));
+    return snap.exists() ? (snap.data() as ProgressDoc) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function getStats(uid: string, year = schoolYearKey()): Promise<StatsDoc | null> {
@@ -47,6 +67,22 @@ function computeUnlockedChapter(levels: ProgressDoc["levels"]): number {
  * Pravidla Firestore hlídají tvar a meze; pravdu ověřuje až audit skript.
  */
 export async function saveRun(uid: string, profile: UserDoc, result: RunResult): Promise<{ progress: ProgressDoc; suspicious: string | null }> {
+  if (uid === "guest-presenter") {
+    const dummyProgress: ProgressDoc = {
+      levels: { [result.levelId]: { stars: result.stars, bestCpm: result.cpm, attempts: 1 } },
+      completedRounds: 1,
+      courseCompletion: 5,
+      unlockedChapter: CHAPTERS.length,
+      bestCpm: result.cpm,
+      bestNetCpm: result.netCpm,
+      totalRuns: 1,
+      totalMinutes: Math.round((result.durationMs / 60000) * 100) / 100,
+      totalScore: result.score,
+      keyStats: result.keyStats,
+      updatedAt: new Date().toISOString() as unknown as Timestamp,
+    };
+    return { progress: dummyProgress, suspicious: null };
+  }
   const year = schoolYearKey();
   const cls = computeClassId(profile.gradYear, profile.track, year);
   const prev = (await getProgress(uid)) ?? (emptyProgress() as ProgressDoc);
@@ -139,6 +175,22 @@ export async function saveZenPractice(
   uid: string,
   result: RunResult,
 ): Promise<{ progress: ProgressDoc; suspicious: null }> {
+  if (uid === "guest-presenter") {
+    const dummyProgress: ProgressDoc = {
+      levels: {},
+      completedRounds: 0,
+      courseCompletion: 0,
+      unlockedChapter: CHAPTERS.length,
+      bestCpm: 0,
+      bestNetCpm: 0,
+      totalRuns: 1,
+      totalMinutes: 0,
+      totalScore: 0,
+      keyStats: result.keyStats,
+      updatedAt: new Date().toISOString() as unknown as Timestamp,
+    };
+    return { progress: dummyProgress, suspicious: null };
+  }
   const prev = (await getProgress(uid)) ?? (emptyProgress() as ProgressDoc);
 
   const keyStats = { ...prev.keyStats };
