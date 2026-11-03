@@ -1485,11 +1485,21 @@ export class LevelScene extends Phaser.Scene {
 
   private calculateCurrentWpm(): number {
     if (!this.started || this.finished) return 0;
-    const now = performance.now();
-    const windowMs = 5000; // plovoucí okno 5 sekund
-    const recentHits = this.keystrokes.filter(([t, ok]) => ok === 1 && now - t <= windowMs).length;
-    // 5 úhozů = 1 slovo, okno 5 sekund -> přepočet na minutu: (hits / 5) * (60 / 5) = hits * 2.4
-    return Math.round(recentHits * 2.4);
+    const currentRunTimeMs = performance.now() - this.startAt - this.totalPauseDurationMs;
+    const windowMs = 4000; // plovoucí okno 4 sekundy
+    const windowStart = currentRunTimeMs - windowMs;
+
+    // Filtrujeme správné úhozy v rámci plovoucího okna
+    const recentHits = this.keystrokes.filter(([t, ok]) => ok === 1 && t >= windowStart).length;
+
+    if (currentRunTimeMs < 4000 && currentRunTimeMs > 500) {
+      // V prvních 4 sekundách počítáme z celého dosavadního času kola
+      const elapsedMin = currentRunTimeMs / 60000;
+      return Math.round((this.correct / 5) / elapsedMin);
+    }
+
+    // 5 úhozů = 1 standardní slovo, okno 4s -> (hits / 5) * (60 / 4) = hits * 3
+    return Math.round(recentHits * 3);
   }
 
   private emitHud() {
